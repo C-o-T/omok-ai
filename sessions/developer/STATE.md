@@ -1,7 +1,7 @@
 # developer 상태 파일
 
 ## 현재 상태
-1단계(Rapfi 빌드) 완료 — MSYS2/MinGW-w64 툴체인 설치, Rapfi clone/빌드/실행 검증까지 성공. 렌주 룰(RULE 4) 런타임 활성화 및 NNUE(mix9svq) 렌주 전용 가중치 로드까지 확인. 다음은 GUI 연동 및 최종 xcopy 패키징.
+1단계(Rapfi 빌드) 완료 — MSYS2/MinGW-w64 툴체인 설치, Rapfi clone/빌드/실행 검증까지 성공. 렌주 룰(RULE 4) 런타임 활성화 및 NNUE(mix9svq) 렌주 전용 가중치 로드까지 확인. 배포 대상 노트북(Lunar Lake, AVX-512 미지원) 호환성 우려에 대해 `USE_AVX2=ON/USE_BMI2=ON/USE_AVX512=OFF` 명시 옵션으로 재빌드·검증(zmm/avx512 명령어 0건 확인) 완료, `omok/engine/dist/`에도 반영됨. 다음은 GUI 연동 및 최종 xcopy 패키징.
 
 ## 완료한 작업 이력
 | 날짜 | 작업 | 핵심 결정 |
@@ -22,8 +22,12 @@
 - **패키징**: `omok/engine/dist/`(pbrain-rapfi.exe + config.toml + NNUE/classical 가중치 + mingw64 런타임 DLL 3종, 총 45MB)를 그대로 GUI와 묶어 xcopy 배포 패키지로 완성. GPL-3.0 의무이행을 위해 Rapfi 소스(또는 소스 링크)와 Copying.txt 동봉 필요.
 - **GUI 연동**: Piskvork 프로토콜 호환 GUI(Yixin-Board 등)를 받아 pbrain-rapfi.exe를 엔진으로 등록, 실제 대국 UI에서 RULE 4(렌주)로 설정해 사람 대전 테스트.
 - **금수 판정 실전 확인(권장, 미완료)**: 이번 실행 테스트는 ABOUT/RULE 설정/첫 수 응답까지만 확인했고, 3-3/4-4/장목 금수를 실제 보드에 재현해 엔진이 이를 거부/회피하는지까지는 검증하지 않음 — GUI 연동 후 실제 대국에서 확인 권장.
-- **배포 이식성 참고**: 지금 빌드는 이 개발 머신(사무용 노트북 CPU와 다를 수 있음)의 `-march=native`로 SSE41/AVX2/BMI2 자동감지되어 빌드됨. 실제 배포 대상 노트북 CPU가 AVX2/BMI2를 지원하지 않으면 "illegal instruction"으로 실행 실패 가능 — 배포 전 대상 CPU 사양 확인 후 필요시 `x64-*-SSE` 수준의 보수적 옵션으로 재빌드 필요.
+- **배포 이식성 참고(해결됨)**: 배포 대상 노트북(삼성 갤럭시 북5 프로, Intel Lunar Lake Core Ultra 5/7 200V)은 AVX2/BMI2/FMA는 지원하나 AVX-512는 미지원 — `-DUSE_AVX2=ON -DUSE_BMI2=ON -DUSE_AVX512=OFF -DUSE_VNNI=OFF` 명시 옵션으로 재빌드해 zmm/avx512 명령어 0건 확인 완료, `omok/engine/dist/pbrain-rapfi.exe` 교체 반영됨. 단, 실제 대상 노트북에서의 최종 실행 테스트는 아직 미실시 — GUI 연동 단계나 별도 인수인계 시 실기 검증 권장.
 - 2단계(RL)는 1단계 완료 및 사용자 재승인 시 "소량 self-play + SPSA 파인튜닝"으로 축소된 범위로 재검토(전면 NNUE 재학습은 GPU 확보 전까지 보류).
 
-## 참고: 향후 재빌드 시 필독 (한글 경로 이슈)
+| 2026-07-10 | 배포 대상 노트북(Lunar Lake, Core Ultra 200V, AVX-512 미지원) 대비 -march=native 재빌드 안전화 | **CPU 확인**: 이 개발 PC의 실제 CPU는 `AMD Ryzen 5 5600 6-Core`(Zen 3) — Zen 3는 AMD가 AVX-512를 도입하기 전(Zen 4부터 지원) 세대라 애초에 AVX-512를 지원하지 않음. 기존 배포본(`omok/engine/dist/pbrain-rapfi.exe`, 이전 -march=native 자동감지 빌드)을 objdump로 재검사한 결과 zmm/avx512 명령어 0건으로, 사실 기존 빌드도 우연히 AVX-512는 안 들어가 있었음(다만 이는 이 개발 PC가 AVX-512 미지원이라 자동감지가 알아서 OFF했을 뿐이지 "명시적으로 안전하게 고정"된 것은 아니었음 — 다른 개발 PC에서 재빌드 시 재발 위험 있었음). **재빌드 방식**: Rapfi CMakeLists.txt 확인 결과 `-march=native`는 SIMD 자동감지(try_compile)용 플래그일 뿐이고, 실제 컴파일 플래그는 `USE_SSE/USE_AVX2/USE_BMI2/USE_AVX512/USE_VNNI` CMake 옵션에 따라 `-mavx2 -mfma -mbmi2` 등으로 명시 지정됨을 확인 — 자동감지에 의존하지 않도록 이 옵션들을 **직접 명시**해 재구성: `cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DUSE_SSE=ON -DUSE_AVX2=ON -DUSE_BMI2=ON -DUSE_AVX512=OFF -DUSE_VNNI=OFF`. Lunar Lake(Core Ultra 200V)는 AVX2/FMA/BMI1/BMI2/AES-NI는 지원하지만 Intel이 Alder Lake 이후 클라이언트 제품에서 AVX-512를 제외했으므로 AVX-512/VNNI는 확실히 미지원 — 이 조합이 안전한 타겟. **빌드 환경 이슈 추가 발견**: 이번 Bash 툴 세션은 Git Bash라 PATH에 실제 MSYS2 mingw64(`C:\msys64\mingw64\bin`)가 없어 `cc1.exe: error while loading shared libraries: libmpfr-6.dll`로 컴파일러 자체가 죽는 문제 발생 — `export PATH="/c/msys64/mingw64/bin:$PATH"`로 해결(향후 재빌드 시 이 PATH 설정 필수, MSYS2 전용 셸이 아니면 기본 PATH에 안 잡혀 있을 수 있음). ASCII 경로(`C:\rapfi_build\Rapfi\build\mingw64-safe`)에서 정상 빌드 완료(경고만 있고 에러 없음). **검증 결과**: `objdump -d pbrain-rapfi.exe | grep -icE "zmm|avx512"` → 0건(완전 미포함 확인), `ymm`(AVX2) 19815건·`pext/pdep`(BMI2) 252건으로 의도한 명령어셋만 포함됨을 확인. 버전 문자열도 `"SSE41 AVX2 BMI2"`로 AVX512 표기 없음 재확인. **실행 테스트**: `omok/engine/dist/`에서 직접 `ABOUT`→`START 15`→`INFO RULE 4`→`BEGIN` 전송 결과 mix9svq 렌주 전용 가중치(black/white) 정상 로드, 중앙 착수 `7,7` 정상 응답 확인 — 이전과 동일한 동작 재현. **배포 갱신**: 새 빌드를 `omok/engine/dist/pbrain-rapfi.exe`로 교체(기존 파일 대체), 이전 native 빌드본은 배포 폴더 밖 스크래치 경로에 백업 보관(체크섬으로 신구 바이너리가 다름을 확인, 우연히 파일 크기만 유사). config.toml/NNUE 가중치/DLL 3종은 변경 없음. |
+
+## 참고: 향후 재빌드 시 필독 (한글 경로 이슈 + PATH 이슈 + 안전 SIMD 옵션)
 - 이 프로젝트 전체가 `C:\Users\dntmd\OneDrive\바탕 화면\...`(한글 "바탕 화면" 포함) 아래에 있어, MinGW 네이티브 툴체인(cmake/make/gcc)으로 이 경로에서 직접 빌드하면 ANSI 코드페이지 손상으로 실패한다. 재빌드/업데이트 시 반드시 소스를 ASCII 전용 경로(예: `C:\rapfi_build`)로 복사한 뒤 그곳에서 cmake 설정+빌드를 수행하고, 결과물만 `omok/engine/dist/`로 복사할 것. (일반 파일 복사/git/Read/Write 등은 이 경로에서 문제없이 동작 — 오직 MinGW 네이티브 빌드 도구 체인만 영향받음)
+- Bash 툴(Git Bash) 세션은 기본 PATH에 실제 MSYS2 mingw64 bin이 안 잡혀 있어 `cc1.exe: error while loading shared libraries: libmpfr-6.dll` 로 컴파일 자체가 실패한다. 빌드 전 반드시 `export PATH="/c/msys64/mingw64/bin:$PATH"` 실행할 것.
+- **CPU 호환성**: 실제 배포 대상(삼성 갤럭시 북5 프로, Lunar Lake)은 AVX2/BMI2/FMA는 지원, AVX-512는 미지원. cmake 설정 시 자동감지(`-march=native` 기반 try_compile)에 맡기지 말고 항상 `-DUSE_SSE=ON -DUSE_AVX2=ON -DUSE_BMI2=ON -DUSE_AVX512=OFF -DUSE_VNNI=OFF`를 명시적으로 지정할 것 — 이렇게 하면 빌드를 수행하는 개발 PC의 CPU 종류(AVX-512 지원 여부)와 무관하게 항상 동일하게 안전한 바이너리가 나온다. 재빌드 후 `objdump -d pbrain-rapfi.exe | grep -icE "zmm|avx512"` 결과가 반드시 0이어야 한다.
