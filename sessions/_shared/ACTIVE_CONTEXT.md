@@ -1,6 +1,13 @@
 [세션 종료 기록]
 역할       : chief
-작성 시각  : 2026-07-10 (6차 갱신)
+작성 시각  : 2026-07-10 (7차 갱신)
+추가 작업5 : 사용자가 "이 PC에서 먼저 테스트"를 지시 → developer가 dhbloo/piskvork_renju GUI(원조 Piskvork
+             렌주 지원판)를 구해 Rapfi 엔진과 연동, 레지스트리 사전설정(15x15/렌주룰/엔진경로)까지 완료.
+             프로토콜 레벨(START/INFO RULE/BEGIN, 가중치 로드, 탐색, 착수응답) 검증 완료.
+             실행 경로: C:\Users\dntmd\omok_pkg\gui\piskvork.exe (한글경로 우회를 위해 OneDrive 밖에 위치)
+             미완료: 사용자 실제 마우스 클릭 대국(3-3 금수 거부 확인 포함) — 다음 사용자 응답 대기.
+             실기(갤럭시 북5 프로) 테스트, 최종 xcopy 배포 패키징(GPL 소스 동봉)도 아직 미착수.
+이전 작성 시각 (7차 이전):
 추가 작업4 : data 세션이 배포 대상(삼성 갤럭시 북5 프로 = Intel Core Ultra 5 226V/7 258V, Lunar Lake)의
              AVX2/BMI2 지원 및 AVX-512 미지원 확인. developer가 CMake 옵션(USE_AVX2/BMI2=ON, USE_AVX512=OFF)으로
              호스트 CPU와 무관하게 고정된 안전 타겟으로 재빌드, objdump로 AVX-512 명령어 0건 확인, 실행 테스트
